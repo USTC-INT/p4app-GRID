@@ -6,8 +6,8 @@ This repository contains p4 code to run in-network aggregation in the Tofino ASI
 
 1. Compile the P4 code
 2. Start the P4 program on the Tofino
-3. Configure the Tofino ports, see port.bfsh
-4. Configure the table entries, see setup.py
+3. Configure the Tofino ports, see bfrt/port.bfsh
+4. Configure the table entries, see bfrt/setup.py
 
 ## Roadmap
 
