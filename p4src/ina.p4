@@ -10,7 +10,7 @@
 
 control Ingress(
         inout header_t hdr,
-        inout metadata_t ig_md,
+        inout ingress_metadata_t ig_md,
         in ingress_intrinsic_metadata_t ig_intr_md,
         in ingress_intrinsic_metadata_from_parser_t ig_prsr_md,
         inout ingress_intrinsic_metadata_for_deparser_t ig_dprsr_md,
@@ -26,7 +26,7 @@ control Ingress(
     
     table switch_check {
         key = {
-            hdr.ngaa.switch_id: exact;
+            hdr.ina.switch_id: exact;
         }
         actions = {
             set_agg;
@@ -47,42 +47,18 @@ control Ingress(
         // hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
     
-    table ipRoute {
+    table forward {
         key = {
             hdr.ipv4.dst_addr: exact;
         }
         actions = {
             ipv4_forward;
             drop;
-            NoAction;
         }
-        size = 1<<8;
         default_action = drop;
     }
 
-
-    Register<bit<8>,index_t>(NUM_REGISTER, 0) count_reg; 
-    
-    RegisterAction<bit<8>, index_t, bit<8>>(count_reg) read_add_count = {
-        void apply(inout bit<8> value, out bit<8> read_value) {
-            value = value+1;
-            
-            if(value == hdr.ngaa.count){
-                value=0;
-                read_value = value;
-            }
-            else{
-                read_value = value;
-            }
-        }
-    };
-
-    action add_count_action(){
-        ig_md.count=read_add_count.execute(ig_md.index);
-    }
-
-    
-    Fragcheck() frag_check;
+    FragCheck() frag_check;
 
     Processor() value00;
     Processor() value01;
@@ -118,22 +94,24 @@ control Ingress(
     Processor() value31;
 
     apply {
-        if(hdr.ngaa.isValid()) {
-            switch_check.apply();
-            
-            if(ig_md.is_aggregation == 1 ){
-                ig_md.index = hdr.ngaa.index;
-                //ig_md.is_ack=hdr.ngaa.is_ack;
+        if(hdr.ina.isValid()) {
+            if (hdr.ina.is_ack == 1){ // updated packets from the PS
+                forward.apply();
+            } 
+            else {
+                switch_check.apply();
 
-                //frag_check.apply(hdr.ngaa.frag_id,ig_md.frag_id,ig_md);
-
-                if( hdr.ngaa.is_ack==1){ // Sent from PS.
-                    ipRoute.apply();
-                }
-                else{
-                    if (ig_md.frag_id == hdr.ngaa.frag_id){
-                        add_count_action(); 
-
+                if(ig_md.is_aggregation == 0 ){ // other switch will aggregate
+                    forward.apply();
+                } 
+                else { // processing
+                    frag_check.apply();
+                    
+                    if(ig_md.frag_id != hdr.frag_id){
+                        forward.apply();
+                    }
+                    else{
+                        //aggregating
                         value00.apply(hdr.gradient.value00,hdr.gradient.value00,ig_md);
                         value01.apply(hdr.gradient.value01,hdr.gradient.value01,ig_md);
                         value02.apply(hdr.gradient.value02,hdr.gradient.value02,ig_md);
@@ -167,33 +145,35 @@ control Ingress(
                         value30.apply(hdr.gradient.value30,hdr.gradient.value30,ig_md);
                         value31.apply(hdr.gradient.value31,hdr.gradient.value31,ig_md);
 
-                        if (ig_md.count == 0){ // Aggregation done.
-                            ipRoute.apply();
+                        if(ig_md.first_last_flag == 1){ // last packet
+                            forward.apply();
                         }
                         else{
                             drop();
                         }
                     }
-                    else{ // Collision happened.
-                        //TODO: forward to remote server, not regular forwarding.
-                        hdr.ngaa.collision=1;
-                        ipRoute.apply();   
-                    }
                 }
-            }
-            else{ // Other switches' job.
-                ipRoute.apply();
             }
         } 
         else {
             if (hdr.ipv4.isValid()) {
-                ipRoute.apply();
+                forward.apply();
             }
             else{
                 drop();
             }
         }
     }
+}
+
+control Egress(
+        inout header_t hdr,
+        inout egress_metadata_t eg_md,
+        in egress_intrinsic_metadata_t eg_intr_md,
+        in egress_intrinsic_metadata_from_parser_t eg_intr_md_from_prsr,
+        inout egress_intrinsic_metadata_for_deparser_t ig_intr_dprs_md,
+        inout egress_intrinsic_metadata_for_output_port_t eg_intr_oport_md) {
+    apply {}
 }
 
 Pipeline(IngressParser(),
