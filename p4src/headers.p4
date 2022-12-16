@@ -24,20 +24,20 @@ header ipv4_h {
     ipv4_addr_t dst_addr;
 }
 
-header ngaa_h {
-    b32_t bitmap;
+header ina_h {
+    bit<32> worker_bitmap;
     bit<8>  count;
     bit<1>  overflow;           
     bit<1>  is_ack;               
-    bit<1>  collision;                
-    bit<1>  resend;            
+    bit<1>  is_collision;                
+    bit<1>  is_resend;            
     bit<4>  timestamp;         
-    b32_t index;
-    bit<8>  switch_id;            
-    b32_t frag_id;         
+    bit<8>  switch_id;
+    bit<32> register_index;
+    bit<32> frag_id;
 }
 
-header ngaa_payload_h {
+header payload_h {
     data_t value00;
     data_t value01;
     data_t value02;
@@ -75,24 +75,29 @@ header ngaa_payload_h {
 struct header_t {
     ethernet_h      ethernet;
     ipv4_h          ipv4;
-    ngaa_h          ngaa;
-    ngaa_payload_h  gradient;
+    ina_h           ina;
+    payload_h       gradient;
 }
 
 /*************************************************************************
  ***********************  M E T A D A T A  *******************************
  *************************************************************************/
-struct empty_metadata_t {}
 
-struct metadata_t {
+struct ingress_metadata_t {
     bit<1> is_aggregation;
-    bit<1> collision;
+    bit<8> first_last_flag; // 0 if first packet, 1 if last packet
+    bit<1> is_collision;
     bit<1> is_ack;
-    bit<8> count;
-    index_t index;
-    b32_t frag_id;
-    b32_t read_frag_id; 
+    
+    bit<32> register_index; // index of used register
+    
+    bit<8> count; // total No. of workers
+    bit<32> frag_id;
+    bit<32> read_frag_id; 
 }
 
+struct egress_metadata_t{
+    //empty
+}
 
 #endif /* HEADERS_P4 */

@@ -7,41 +7,25 @@
 control Processor(
     in data_t value_in,
     out data_t value_out,
-    in metadata_t meta) {
+    in ingress_metadata_t ig_md) {
 
-    Register<data_single_t,index_t>(NUM_REGISTER) value; 
+    Register<data_t,index_t>(register_size) gradient; 
 
-    RegisterAction<data_single_t, index_t, data_t>(value) sum_read_value = {
-        void apply(inout data_single_t value, out data_t out_value) {
-            if(meta.count == 1){ //first packet
-                value.first=value_in;
+    RegisterAction<data_t, index_t, data_t>(gradient) sum_read_value = {
+        void apply(inout data_t value, out data_t out_value) {
+            if(ig_md.first_last_flag == 0){ //first packet
+                value=value_in;
             }
             else{
-                value.first  = value.first + value_in;
+                value = value + value_in;
             }
-            out_value = value.first;
+            out_value = value;
         }
     };
     
     action sum_read_action() {
-        value_out = sum_read_value.execute(meta.index);
+        value_out = sum_read_value.execute(ig_md.index);
     }
-
-
-    // table sum {
-    //     key = {
-    //        meta.is_aggregation: exact;
-    //     }
-    //     actions = {
-    //         sum_read_action;
-    //         NoAction;
-    //     }
-    //     size = 1;
-    //     const entries={
-    //         (1):sum_read_action();
-    //     }
-    //     const default_action = NoAction;
-    // }
 
     apply {
         sum_read_action();
