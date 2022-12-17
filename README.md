@@ -1,6 +1,6 @@
 # p4app-INA
 
-This repository contains p4 code to run in-network aggregation in the Tofino ASIC.
+This repository contains p4 code to run in-network aggregation.
 
 ## Getting started
 
@@ -13,7 +13,7 @@ This repository contains p4 code to run in-network aggregation in the Tofino ASI
 
 |Status | Priority | Target | Type | Due |
 | ------| ------ | ------ | ------ | ------ |
-| TODO | P1 | Fix the bug of wrong aggregation results | Tofino P4 | 2022.07.04|
+| **FIXED** | P1 | Fix the bug of wrong aggregation results | Tofino P4 | 2022.07.04|
 | TODO | P2 | Implementing basic forwarding functions | Tofino P4 | |
 | TODO | P3 | Enable fault tolerance | Tofino P4| |
-| TODO | P3 | Integrate simulation with ns-3 | BMv2 P4 | |
+| TODO | P3 | Integrate simulation with ns-3 | BMv2 P4 | 
