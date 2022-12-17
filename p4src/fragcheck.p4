@@ -3,27 +3,17 @@
 #include "types.p4"
 #include "headers.p4"
 
-
 control FragCheck(
     in header_t hdr,
     inout ingress_metadata_t ig_md,
-    in ingress_intrinsic_metadata_for_deparser_t ig_dprsr_md) {
-    
-    Register<bit<32>,index_t>(register_size) frag_id; 
+    in ingress_intrinsic_metadata_t ig_intr_md) {
 
-    RegisterAction<bit<32>, index_t, bit<32>>(frag_id) check_frag_id = {
+    Register<bit<32>,_>(register_size) frag_id; 
+
+    RegisterAction<bit<32>, _, bit<32>>(frag_id) check = {
         void apply(inout bit<32> value, out bit<32> read_value) {
-            if(value==0 || value == hdr.frag_id){ // legal
-                
-                worker_counter.apply(hdr,ig_md,ig_dprsr_md);
-                
-                if (ig_md.first_last_flag == 1){ //last packets 
-                    value=0; //reset
-                }
-                else{
-                    value = hdr.frag_id;
-                }
-
+            if(value==0 || value == hdr.ina.frag_id){ // legal
+                value = hdr.ina.frag_id;
                 read_value=value;
             }
             else{ // ilegal
@@ -32,23 +22,41 @@ control FragCheck(
         }
     };
     
+    RegisterAction<bit<32>, _, bit<32>>(frag_id) reset = {
+        void apply(inout bit<32> value, out bit<32> read_value) {
+            value=0;
+            read_value=value;
+        }
+    };
+
     action check_frag_id_action() {
-        ig_md.frag_id=check_frag_id.execute(ig_md.register_index);
+        ig_md.frag_id=check.execute(ig_md.register_index);
     }
 
-    table check_frag {
-       
+    action reset_frag_id_action(){
+        ig_md.frag_id = reset.execute(ig_md.register_index);
+    }
+    
+    table frag_check {
+        key = {
+            ig_intr_md.resubmit_flag : exact;
+        }
         actions = {
             check_frag_id_action;
+            reset_frag_id_action;
+            @defaultonly NoAction;
         }
 
-        const default_action = check_frag_id_action;
+        const entries ={
+            (0) : check_frag_id_action();
+            (1) : reset_frag_id_action();
+        }
+
+        const default_action = NoAction;
     }
 
-    WorkerCounter() worker_counter;
-    
     apply {
-        check_frag.apply();
+        frag_check.apply();
     }
 }
 

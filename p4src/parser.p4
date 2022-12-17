@@ -1,14 +1,15 @@
 #ifndef _PARSERS_
 #define _PARSERS_
 
-
+#include <core.p4>
+#if __TARGET_TOFINO__ == 2
+#include <t2na.p4>
+#else
 #include <tna.p4>
+#endif
+
 #include "headers.p4"
 #include "types.p4"
-
-// ---------------------------------------------------------------------------
-// Ingress parser
-// ---------------------------------------------------------------------------
 
 
 parser IngressParser(
@@ -17,8 +18,20 @@ parser IngressParser(
         out ingress_metadata_t ig_md,
         out ingress_intrinsic_metadata_t ig_intr_md) {
 
-     state start {
+    state start {
         pkt.extract(ig_intr_md);
+        transition select(ig_intr_md.resubmit_flag){
+            1: parse_resubmit;
+            0: parse_port_metadata;
+        }
+    }
+
+    state parse_resubmit{
+        pkt.extract(ig_md.resubmit_data);
+        transition parse_ethernet;
+    }
+
+    state parse_port_metadata{
         pkt.advance(PORT_METADATA_SIZE);
         transition parse_ethernet;
     }
@@ -41,22 +54,17 @@ parser IngressParser(
 
     state parse_ina {
         pkt.extract(hdr.ina);
-        pkt.extract(hdr.gradient);
-        transition meta_init;
-    }
-
-     state meta_init {
+        
         ig_md.register_index=hdr.ina.register_index;
         ig_md.count=hdr.ina.count;
         ig_md.frag_id  = hdr.ina.frag_id;
+        
+        pkt.extract(hdr.gradient);
+
         transition accept;
     }
 }
 
-
-// ---------------------------------------------------------------------------
-// Ingress Deparser
-// ---------------------------------------------------------------------------
 control IngressDeparser(
         packet_out pkt,
         inout header_t hdr,
@@ -64,8 +72,17 @@ control IngressDeparser(
         in ingress_intrinsic_metadata_for_deparser_t ig_dprsr_md) {
     
     Checksum() ipv4_checksum;
+
+    Resubmit() resubmit;
     
     apply {
+        
+        if (ig_dprsr_md.resubmit_type == 1) {
+            resubmit.emit();
+        } else if (ig_dprsr_md.resubmit_type == 2) {
+            resubmit.emit(ig_md.resubmit_data);
+        }
+
         if(hdr.ipv4.isValid()){
             hdr.ipv4.hdr_checksum = ipv4_checksum.update({
                 hdr.ipv4.version,

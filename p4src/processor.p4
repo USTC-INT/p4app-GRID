@@ -11,24 +11,24 @@ control Processor(
 
     Register<data_t,_>(register_size) gradient; 
 
-    RegisterAction<data_t, _, data_t>(gradient) sum_read_value = {
-        void apply(inout data_t value, out data_t out_value) {
+    RegisterAction<data_t, _, data_t>(gradient) aggregate = {
+        void apply(inout data_t value, out data_t read_value) {
             if(ig_md.first_last_flag == 0){ //first packet
                 value=value_in;
             }
             else{
                 value = value + value_in;
             }
-            out_value = value;
+            read_value = value;
         }
     };
     
-    action sum_read_action() {
-        value_out = sum_read_value.execute(ig_md.register_index);
+    action aggregating_action() {
+        value_out = aggregate.execute(ig_md.register_index);
     }
 
     apply {
-        sum_read_action();
+        aggregating_action();
     }
 }
 

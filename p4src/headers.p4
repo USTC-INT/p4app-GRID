@@ -24,6 +24,11 @@ header ipv4_h {
     ipv4_addr_t dst_addr;
 }
 
+header resubmit_t{
+    PortId_t port_id;
+    bit<48> _pad2;
+}
+
 header ina_h {
     bit<32> worker_bitmap;
     bit<8>  count;
@@ -79,10 +84,8 @@ struct header_t {
     payload_h       gradient;
 }
 
-/*************************************************************************
- ***********************  M E T A D A T A  *******************************
- *************************************************************************/
 
+@flexible
 struct ingress_metadata_t {
     bit<1> is_aggregation;
     bit<8> first_last_flag; // 0 if first packet, 1 if last packet
@@ -91,13 +94,15 @@ struct ingress_metadata_t {
     
     bit<32> register_index; // index of used register
     
-    bit<8> count; // total No. of workers
+    bit<8> count; // total no. of workers
     bit<32> frag_id;
     bit<32> read_frag_id; 
+
+    resubmit_t resubmit_data;
 }
 
-struct egress_metadata_t{
-    //empty
+struct egress_metadata_t {
+
 }
 
 #endif /* HEADERS_P4 */

@@ -27,16 +27,8 @@ control WorkerCounter(
         ig_md.first_last_flag = workers_count_action.execute(ig_md.register_index); // 1 means last packet; 0 means first packet
     }
 
-    table count_workers{
-        actions = {
-            count_workers_action;
-        }
-
-        default_action = count_workers_action;
-    }
-
     apply {
-        count_workers.apply();
+        count_workers_action();
     }
 }
 
