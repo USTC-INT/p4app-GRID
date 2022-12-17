@@ -9,9 +9,9 @@ control Processor(
     out data_t value_out,
     in ingress_metadata_t ig_md) {
 
-    Register<data_t,index_t>(register_size) gradient; 
+    Register<data_t,_>(register_size) gradient; 
 
-    RegisterAction<data_t, index_t, data_t>(gradient) sum_read_value = {
+    RegisterAction<data_t, _, data_t>(gradient) sum_read_value = {
         void apply(inout data_t value, out data_t out_value) {
             if(ig_md.first_last_flag == 0){ //first packet
                 value=value_in;
@@ -24,7 +24,7 @@ control Processor(
     };
     
     action sum_read_action() {
-        value_out = sum_read_value.execute(ig_md.index);
+        value_out = sum_read_value.execute(ig_md.register_index);
     }
 
     apply {
